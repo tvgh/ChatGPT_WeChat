@@ -11,6 +11,7 @@ import yaml
 # 导入自定义类
 from whiteIPManage import whiteIP
 from gptManage import gptSessionManage,gptMessageManage
+from log import logger
 
 ##############################读取配置##########################
 with open('config/config.yml', 'r') as f:
@@ -98,4 +99,5 @@ def wechat():
 
 
 if __name__ == '__main__':
+    logger.info("Flask start begin....")
     app.run( host = '0.0.0.0')
