@@ -81,7 +81,7 @@ class gptMessageManage(object):
         
     def get_response(self,msgs,curtime,msg_content):
         '''
-        获取每条msg，回复消息
+        获取微信每条msg，回复消息
         '''
         self.msgs_time_dict[str(msgs.id)] = curtime
         # 判断是否返回分割列表里面的内容
@@ -93,12 +93,12 @@ class gptMessageManage(object):
         
         # 获取消息属性
         users_obj = self.msgs_msgdata_dict.get(str(msgs.source),'')
-        # 判断是否新用户
+        # 判断是否新用户,新用户创建gptSessionManage类的实例(入参是保存条数),实例用dict通过userid主键管理
         if users_obj=='':
             self.msgs_msgdata_dict[str(msgs.source)] = gptSessionManage(self.configs['openai']['save_history'])
         # 判断消息状态
         msg_status = self.msgs_status_dict.get(str(msgs.id),'')
-        # 为新消息
+        # 为新消息,即非重试的重复消息
         if msg_status=='':
             # 按照消息的ID创建消息列表
             self.msgs_list[str(msgs.id)]=[]
@@ -126,13 +126,13 @@ class gptMessageManage(object):
                     self.user_msg_timePoint_dict[str(msgs.source)] = curtime
                     self.user_msg_timeSpan_dict[str(msgs.source)] = [user_sendTimeSpan[-2],user_sendTimeSpan[-1],user_curTimeUse]
             
-            # 等候消息返回
+            # 等候消息返回, 微信5秒超时后,这里持续等待
             res = self.rec_get_returns_first(msgs)
-        # 为二次请求消息
+        # 为二次请求消息(超时重试) ,等到首次消息从openai返回,最多循环3次(wechat重试次数)
         else:
             res = self.rec_get_returns_pending(msgs)
 
-
+        #
         print('记录时间：',self.msgs_time_dict.get(str(msgs.id),''),'当前时间',curtime)
         logger.debug('记录时间：{}, 当前时间: {}'.format(self.msgs_time_dict.get(str(msgs.id), ''), curtime))
         # 判断当前请求是否是最新的请求，是：返回消息，否：返回空
