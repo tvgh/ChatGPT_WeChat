@@ -98,4 +98,14 @@ def wechat():
 
 
 if __name__ == '__main__':
-    app.run( host = '0.0.0.0')
+    #app.run( host = '0.0.0.0')
+    #使用OS读取txt文件内容，以换行符为分界存为一个列表
+    current_path = os.path.dirname(__file__)
+    with open(current_path+"/sensitive_words_lines.txt", 'r', encoding='utf-8') as f:
+        sensitive_data = f.readlines()
+        #去除列表中的换行符
+        sensitive_data = [word.strip() for word in sensitive_data]
+
+    from gevent import pywsgi
+    server = pywsgi.WSGIServer(('0.0.0.0', 80), app)
+    server.serve_forever()
