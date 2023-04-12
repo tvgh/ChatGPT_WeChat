@@ -9,6 +9,7 @@ from wechatpy import WeChatClient
 import threading
 import os 
 from os import listdir
+from log import logger
 
 class gptSessionManage(object):
     '''
@@ -18,7 +19,7 @@ class gptSessionManage(object):
         '''
         初始化
         '''
-        self.messages = [{"role": "system", "content": "我是乐于助人的小助手，可以叫我Tory的小助手."}]
+        self.messages = [{"role": "system", "content": "你是ChatGPT, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"}]
         self.sizeLim = save_history
         self.last_q_time = time.time()
     
@@ -47,7 +48,7 @@ class gptSessionManage(object):
         '''
         初始化会话
         '''
-        self.messages = [{"role": "system", "content": "我是乐于助人的小助手，可以叫我Tory的小助手."}]
+        self.messages = [{"role": "system", "content": "你是ChatGPT, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"}]
         
 class gptMessageManage(object):
     '''
@@ -133,9 +134,11 @@ class gptMessageManage(object):
 
 
         print('记录时间：',self.msgs_time_dict.get(str(msgs.id),''),'当前时间',curtime)
+        logger.debug('记录时间：{}, 当前时间: {}'.format(self.msgs_time_dict.get(str(msgs.id), ''), curtime))
         # 判断当前请求是否是最新的请求，是：返回消息，否：返回空
         if curtime == self.msgs_time_dict.get(str(msgs.id),''):
             print('这是结果',self.msgs_returns_dict[str(msgs.id)])
+            logger.debug('这是结果: {}'.format(self.msgs_returns_dict[str(msgs.id)]))
             retunsMsg = self.msgs_returns_dict.get(str(msgs.id),'tt')
             # 清理缓存
             t = threading.Thread(target=self.del_cache)
@@ -143,6 +146,7 @@ class gptMessageManage(object):
             # 是否返回的语音消息的media_id
             if isinstance(retunsMsg, list):
                 print('返回语音的列表：',retunsMsg)
+                logger.debug('返回语音的列表：{}'.format(retunsMsg))
                 return retunsMsg
             # 判断长度是否过长，否则将消息分割
             if len(retunsMsg)>self.rsize:
@@ -158,6 +162,7 @@ class gptMessageManage(object):
             return retunsMsg
         else:
             print('当前的对话没有回复',curtime,msg_content)
+            logger.debug('当前的对话没有回复: {} {}'.format(curtime, msg_content))
             # self.del_cache()
             time.sleep(10)
             return ''
@@ -197,6 +202,8 @@ class gptMessageManage(object):
                 'Authorization': self.get_header(),
             }
             print('发送的消息：',self.msgs_msgdata_dict[str(msgs.source)].messages)
+            logger.debug('发送的消息：{}'.format(self.msgs_msgdata_dict[str(msgs.source)].messages))
+
 
             json_data = {
                 'model': self.model,
@@ -208,14 +215,17 @@ class gptMessageManage(object):
             response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=json_data,timeout=13.2)
             response_parse = json.loads(response.text)
             print(response_parse)
+            logger.debug(response_parse)
             if 'error' in response_parse:
                 print(response_parse)
+                logger.error(response_parse)
                 return '出错了，请稍后再试！'
             else:
                 self.msgs_msgdata_dict[str(msgs.source)].add_res_message(response_parse['choices'][0]['message']['content'])
                 return response_parse['choices'][0]['message']['content']
         except Exception as e:
             print(e)
+            logger.error(e)
             # return '请求超时，请稍后再试！\n【近期官方接口响应变慢，若持续出现请求超时，还请换个时间再来😅~】'
             return '请求超时，请稍后再试！'
         
@@ -227,6 +237,7 @@ class gptMessageManage(object):
                 'Authorization': self.get_header(),
             }
             print('发送的消息：',self.msgs_msgdata_dict[str(msgs.source)].messages)
+            logger.debug('发送的消息：{}'.format(self.msgs_msgdata_dict[str(msgs.source)].messages))
 
             json_data = {
                 'model': self.model,
@@ -238,14 +249,17 @@ class gptMessageManage(object):
             response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=json_data,timeout=9)
             response_parse = json.loads(response.text)
             print(response_parse)
+            logger.debug(response_parse)
             if 'error' in response_parse:
                 print(response_parse)
+                logger.error(response_parse)
                 return '出错了，请稍后再试！'
             else:
                 rtext = response_parse['choices'][0]['message']['content']
                 if self.get_voice_from_azure(rtext,str(msgs.source),str(msgs.id)):
                     media_id = self.upload_wechat_voice(str(msgs.source),str(msgs.id))
                     # print('media_id:',str(media_id))
+                    # logger.debug('media_id:',str(media_id))
                     if media_id:
                         self.msgs_msgdata_dict[str(msgs.source)].add_res_message(rtext)
                         return [str(media_id)]
@@ -256,6 +270,7 @@ class gptMessageManage(object):
                     return rtext
         except Exception as e:
             print(e)
+            logger.error(e)
             return '请求超时，请稍后再试！'
     
     def get_voice_from_azure(self,texts,msgsource,msgid):
@@ -280,6 +295,7 @@ class gptMessageManage(object):
                 return False
         except Exception as e:
             print(e)
+            logger.error(e)
             return False
     
     def upload_wechat_voice(self,msgsource,msgid):
@@ -292,6 +308,7 @@ class gptMessageManage(object):
             return media_id
         except Exception as e:
             print(e)
+            logger.error(e)
             return 
     
     def have_chinese(self,strs):
@@ -308,6 +325,7 @@ class gptMessageManage(object):
             return 1
         except Exception as e:
             print(e)
+            logger.error(e)
             return 1
         
         
@@ -335,6 +353,7 @@ class gptMessageManage(object):
                     os.remove(my_path + file_name)
                 except Exception:
                     print('删除失败')
+                    logger.error('删除失败')
             # 删除media_id：
             for mid in self.media_id_list:
                 self.del_uploaded_wechat_voice(mid)
